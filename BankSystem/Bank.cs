@@ -8,6 +8,7 @@ namespace BankSystem
         void Deposit(Account toAccount, double amount);
         void Withdraw(Account fromAccount, double amount);
         void Transfer(Account fromAccount, Account toAccount, double amount);
+        Account GetAccount(string accountNumber);
     }
 
     public class Bank : IBank
@@ -17,6 +18,11 @@ namespace BankSystem
         public Bank(IRepository repository)
         {
             this.accountRepository = repository ?? new AccountRepository();
+        }
+
+        public Account GetAccount(string accountNumber)
+        {
+            return accountRepository.Get(accountNumber);
         }
 
         public Account CreateAccount(string loginName, string password, double initialDeposit = 0)

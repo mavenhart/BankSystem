@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace BankSystem.Test
 {
@@ -173,6 +174,57 @@ namespace BankSystem.Test
             customerAccount = repository.Get(customerAccount.AccountNumber.ToString());
             Assert.IsNotNull(customerAccount, "Account is null");
             Assert.AreEqual(customerInitialBalance + amountToDeposit, customerAccount.Balance);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(AggregateException))]
+        public void ConcurrencyTest_ThrowsException()
+        {
+            // Sender
+
+            var customerLoginName = "Customer1";
+            var customerPassword = "Password1";
+            var customerInitialBalance = 5000;
+            var customerAccount = bank.CreateAccount(customerLoginName, customerPassword, customerInitialBalance);
+
+            var amountToDeposit = 1000;
+
+            // Receiver
+            var ReceiverLoginName = "Customer1101";
+            var ReceiverPassword = "Password1";
+            var ReceiverInitialBalance = 0;
+            var ReceiverAccount = bank.CreateAccount(ReceiverLoginName, ReceiverPassword, ReceiverInitialBalance);
+
+
+            // Act
+            Task[] taskArray = new Task[4];
+            // Deposit 1000
+            taskArray[0] = Task.Factory.StartNew(() => {
+                bank.Deposit(customerAccount, amountToDeposit);
+                    }
+                );
+            
+            // Transfer 1000 to Receiver 
+            taskArray[1] = Task.Factory.StartNew(() => {
+                bank.Transfer(customerAccount, ReceiverAccount, amountToDeposit);
+                    }
+                );
+
+            // Withdraw
+            taskArray[2] = Task.Factory.StartNew(() => {
+                bank.Withdraw(customerAccount, amountToDeposit);
+            }
+                );
+            
+            // Withdraw
+            taskArray[3] = Task.Factory.StartNew(() => {
+                bank.Withdraw(ReceiverAccount, 100);
+            }
+                );
+
+            Task.WaitAll(taskArray);
+
+            // Assert
         }
 
         [TestMethod]

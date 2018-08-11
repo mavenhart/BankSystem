@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.Text;
+using System.Threading;
 using System.Transactions;
 
 namespace BankSystem
@@ -62,11 +64,12 @@ namespace BankSystem
                     scope.Complete();
                 }
             }
-            catch (TransactionAbortedException ex)
+            catch (SqlException ex)
             {
+                Console.WriteLine(ex.Message);
                 throw ex;
             }
-            catch (ApplicationException ex)
+            catch (Exception ex)
             {
                 throw ex;
             }
@@ -78,36 +81,49 @@ namespace BankSystem
         {
             try
             {
-                using (var connection = new SqlConnection(ConnectionString))
+                using (var transacionScope = CreateTransactionScope())
                 {
-                    connection.Open();
-
-                    var command1 = new SqlCommand($"SELECT Id, LoginName, AccountNumber, Balance, CreatedDate FROM Account WHERE AccountNumber = '{accountNo}'", connection);
-                    var reader = command1.ExecuteReader();
-
-                    if (reader.HasRows)
+                    using (var connection = new SqlConnection(ConnectionString))
                     {
-                        while (reader.Read())
+                        connection.Open();
+
+                        Account account = null;
+                        var command1 = new SqlCommand($"SELECT Id, LoginName, AccountNumber, Balance, CreatedDate FROM Account WHERE AccountNumber = '{accountNo}'", connection);
+                        var reader = command1.ExecuteReader();
+
+                        if (reader.HasRows)
                         {
-                            return new Account()
+                            while (reader.Read())
                             {
-                                Id = Convert.ToInt32(reader["Id"]),
-                                LoginName = Convert.ToString(reader["LoginName"]),
-                                AccountNumber = Convert.ToString(reader["AccountNumber"]),
-                                Balance = Convert.ToDouble(reader["Balance"])                                
-                            };
+                                account = new Account()
+                                {
+                                    Id = Convert.ToInt32(reader["Id"]),
+                                    LoginName = Convert.ToString(reader["LoginName"]),
+                                    AccountNumber = Convert.ToString(reader["AccountNumber"]),
+                                    Balance = Convert.ToDouble(reader["Balance"])
+                                };
+                            }
                         }
+                        transacionScope.Complete();
+
+                        return account;
                     }
 
-                    return null;
                 }
             }
             catch (SqlException ex)
             {
+                Console.WriteLine(ex.Message);
                 throw ex;
             }
             catch (ApplicationException ex)
             {
+                Console.WriteLine(ex.Message);
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
                 throw ex;
             }
         }
@@ -124,7 +140,7 @@ namespace BankSystem
                     {
                         // Opening the connection automatically enlists it in the 
                         // TransactionScope as a lightweight transaction.
-                        connection.Open();
+                        connection.Open();                       
 
                         var command1 = new SqlCommand($"UPDATE Account SET Balance = {account.Balance} WHERE AccountNumber = '{account.AccountNumber}'", connection);
                         command1.ExecuteNonQuery();
@@ -135,12 +151,14 @@ namespace BankSystem
                     scope.Complete();
                 }
             }
-            catch (TransactionAbortedException ex)
+            catch (SqlException ex)
             {
+                Console.WriteLine(ex.Message);
                 throw ex;
             }
-            catch (ApplicationException ex)
+            catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
                 throw ex;
             }
         }
@@ -148,7 +166,7 @@ namespace BankSystem
         public bool IsLoginExists(string loginName)
         {
             try
-            {
+            {              
                 using (var connection = new SqlConnection(ConnectionString))
                 {
                     connection.Open();
@@ -166,8 +184,9 @@ namespace BankSystem
             {
                 throw ex;
             }
-            catch (ApplicationException ex)
+            catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
                 throw ex;
             }
         }
@@ -195,11 +214,11 @@ namespace BankSystem
                     scope.Complete();
                 }
             }
-            catch (TransactionAbortedException ex)
+            catch (SqlException ex)
             {
                 throw ex;
             }
-            catch (ApplicationException ex)
+            catch (Exception ex)
             {
                 throw ex;
             }
@@ -235,8 +254,13 @@ namespace BankSystem
             {
                 throw ex;
             }
-            catch (ApplicationException ex)
+            catch (SqlException ex)
             {
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
                 throw ex;
             }
         }
@@ -265,11 +289,11 @@ namespace BankSystem
                     scope.Complete();
                 }
             }
-            catch (TransactionAbortedException ex)
+            catch (SqlException ex)
             {
                 throw ex;
             }
-            catch (ApplicationException ex)
+            catch (Exception ex)
             {
                 throw ex;
             }
@@ -279,7 +303,7 @@ namespace BankSystem
         {
             var transactionOptions = new TransactionOptions
             {
-                IsolationLevel = IsolationLevel.ReadCommitted,
+                IsolationLevel = System.Transactions.IsolationLevel.Snapshot,
                 Timeout = new TimeSpan(0, 10, 0) //assume 10 min is the timeout time
             };
             return new TransactionScope(TransactionScopeOption.Required, transactionOptions);
