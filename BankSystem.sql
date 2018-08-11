@@ -3,6 +3,9 @@ USE master
 CREATE DATABASE [BankSystem]
 GO
 
+ALTER DATABASE [BankSystem] SET ALLOW_SNAPSHOT_ISOLATION ON
+GO
+
 USE [BankSystem]
 GO
 
